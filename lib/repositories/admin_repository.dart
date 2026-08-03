@@ -3,6 +3,7 @@ import '../models/admin_user.dart';
 import '../models/category.dart';
 import '../models/complaint.dart';
 import '../models/coupon.dart';
+import '../models/paid_order.dart';
 import '../models/trainer_application.dart';
 import '../models/training_package.dart';
 import '../models/training_program.dart';
@@ -104,6 +105,64 @@ class AdminRepository {
     }
     return {'pending': pending, 'approved': approved, 'rejected': rejected};
   }
+
+  // ---------------------------------------------------------------------
+  // Orders / trainer allocation
+  // ---------------------------------------------------------------------
+  Future<List<PaidOrder>> getPaidOrders({bool onlyUnassigned = false}) async {
+    // orders.user_id and profiles.id both reference auth.users(id) but
+    // there's no direct FK between orders and profiles, so PostgREST can't
+    // auto-embed profiles here — fetched separately and merged below.
+    var builder = SupabaseConfig.client
+        .from('orders')
+        .select('id, total, created_at, trainer_id, user_id, addresses(city), '
+            'trainers(name), order_items(training_packages(name))')
+        .eq('payment_status', 'paid');
+    if (onlyUnassigned) builder = builder.filter('trainer_id', 'is', null);
+    final rows = await builder.order('created_at', ascending: false) as List;
+
+    final userIds = rows.map((r) => (r as Map)['user_id'] as String).toSet().toList();
+    final names = <String, String>{};
+    if (userIds.isNotEmpty) {
+      final profileRows = await SupabaseConfig.client
+          .from('profiles')
+          .select('id, first_name, last_name')
+          .inFilter('id', userIds);
+      for (final p in profileRows as List) {
+        final row = p as Map<String, dynamic>;
+        names[row['id'] as String] = '${row['first_name'] ?? ''} ${row['last_name'] ?? ''}'.trim();
+      }
+    }
+
+    return rows
+        .map((r) => PaidOrder.fromRow(r as Map<String, dynamic>, clientName: names[r['user_id']] ?? ''))
+        .toList();
+  }
+
+  /// Trainers with their current allocated (paid, still-active) client
+  /// count, so an admin can pick the least-loaded trainer.
+  Future<List<TrainerRosterEntry>> getTrainerRoster() async {
+    final trainers = await SupabaseConfig.client.from('trainers').select('id, name').not('user_id', 'is', null);
+    final orders = await SupabaseConfig.client.from('orders').select('trainer_id').eq('payment_status', 'paid');
+    final counts = <String, int>{};
+    for (final o in orders as List) {
+      final tid = (o as Map)['trainer_id'] as String?;
+      if (tid != null) counts[tid] = (counts[tid] ?? 0) + 1;
+    }
+    return (trainers as List)
+        .map((t) => TrainerRosterEntry(
+              id: (t as Map)['id'] as String,
+              name: t['name'] as String? ?? 'Trainer',
+              activeClientCount: counts[t['id']] ?? 0,
+            ))
+        .toList()
+      ..sort((a, b) => a.activeClientCount.compareTo(b.activeClientCount));
+  }
+
+  Future<void> assignTrainer(String orderId, String trainerId) => SupabaseConfig.client.from('orders').update({
+        'trainer_id': trainerId,
+        'assigned_at': DateTime.now().toIso8601String(),
+      }).eq('id', orderId);
 
   // ---------------------------------------------------------------------
   // Trainer applications

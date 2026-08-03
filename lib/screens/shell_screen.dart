@@ -4,6 +4,7 @@ import '../theme/app_theme.dart';
 import '../providers/auth_provider.dart';
 import 'dashboard_screen.dart';
 import 'trainer_applications_screen.dart';
+import 'orders_screen.dart';
 import 'packages_screen.dart';
 import 'programs_screen.dart';
 import 'categories_screen.dart';
@@ -22,6 +23,7 @@ class _Section {
 final _sections = [
   const _Section(icon: Icons.dashboard_outlined, label: 'Dashboard', screen: DashboardScreen()),
   const _Section(icon: Icons.assignment_ind_outlined, label: 'Trainer Applications', screen: TrainerApplicationsScreen()),
+  const _Section(icon: Icons.receipt_long_outlined, label: 'Orders & Allocation', screen: OrdersScreen()),
   const _Section(icon: Icons.card_giftcard_outlined, label: 'Packages', screen: PackagesScreen()),
   const _Section(icon: Icons.fitness_center_outlined, label: 'Programs', screen: ProgramsScreen()),
   const _Section(icon: Icons.category_outlined, label: 'Categories', screen: CategoriesScreen()),
