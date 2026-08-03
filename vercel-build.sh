@@ -5,7 +5,7 @@
 set -euo pipefail
 
 FLUTTER_HOME="$(pwd)/.flutter-sdk"
-FLUTTER_VERSION="3.24.5"
+FLUTTER_VERSION="3.44.0"
 
 if [ ! -d "$FLUTTER_HOME" ]; then
   git clone --depth 1 --branch "$FLUTTER_VERSION" https://github.com/flutter/flutter.git "$FLUTTER_HOME"
