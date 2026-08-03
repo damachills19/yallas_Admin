@@ -47,3 +47,29 @@ class TrainerRosterEntry {
 
   const TrainerRosterEntry({required this.id, required this.name, required this.activeClientCount});
 }
+
+class PendingBankTransfer {
+  final String orderId;
+  final String clientName;
+  final double total;
+  final String? slipPath;
+  final DateTime createdAt;
+
+  const PendingBankTransfer({
+    required this.orderId,
+    required this.clientName,
+    required this.total,
+    this.slipPath,
+    required this.createdAt,
+  });
+
+  factory PendingBankTransfer.fromRow(Map<String, dynamic> row, {String clientName = ''}) {
+    return PendingBankTransfer(
+      orderId: row['id'] as String,
+      clientName: clientName.isEmpty ? 'Client' : clientName,
+      total: (row['total'] as num?)?.toDouble() ?? 0,
+      slipPath: row['bank_transfer_slip_path'] as String?,
+      createdAt: DateTime.tryParse(row['created_at'] as String? ?? '') ?? DateTime.now(),
+    );
+  }
+}

@@ -164,6 +164,81 @@ class AdminRepository {
         'assigned_at': DateTime.now().toIso8601String(),
       }).eq('id', orderId);
 
+  /// Cash-on-delivery orders: there's no online gateway confirmation for
+  /// these, so they sit at payment_status='unpaid' forever unless an admin
+  /// manually marks them paid (e.g. once cash is actually collected) —
+  /// otherwise they never appear anywhere for trainer allocation.
+  Future<List<PaidOrder>> getUnpaidCashOrders() async {
+    final rows = await SupabaseConfig.client
+        .from('orders')
+        .select('id, total, created_at, trainer_id, user_id, addresses(city), '
+            'trainers(name), order_items(training_packages(name))')
+        .eq('payment_status', 'unpaid')
+        .eq('bank_transfer_status', 'none')
+        .order('created_at', ascending: false) as List;
+
+    final userIds = rows.map((r) => (r as Map)['user_id'] as String).toSet().toList();
+    final names = <String, String>{};
+    if (userIds.isNotEmpty) {
+      final profileRows =
+          await SupabaseConfig.client.from('profiles').select('id, first_name, last_name').inFilter('id', userIds);
+      for (final p in profileRows as List) {
+        final row = p as Map<String, dynamic>;
+        names[row['id'] as String] = '${row['first_name'] ?? ''} ${row['last_name'] ?? ''}'.trim();
+      }
+    }
+
+    return rows
+        .map((r) => PaidOrder.fromRow(r as Map<String, dynamic>, clientName: names[r['user_id']] ?? ''))
+        .toList();
+  }
+
+  Future<void> markOrderPaidCash(String orderId) => SupabaseConfig.client.from('orders').update({
+        'payment_status': 'paid',
+        'payment_method': 'cash',
+        'status': 'confirmed',
+      }).eq('id', orderId);
+
+  // ---------------------------------------------------------------------
+  // Bank transfer review (manual payment method — no automated gateway)
+  // ---------------------------------------------------------------------
+  Future<List<PendingBankTransfer>> getPendingBankTransfers() async {
+    final rows = await SupabaseConfig.client
+        .from('orders')
+        .select('id, total, created_at, user_id, bank_transfer_slip_path')
+        .eq('bank_transfer_status', 'pending')
+        .order('created_at', ascending: false) as List;
+
+    final userIds = rows.map((r) => (r as Map)['user_id'] as String).toSet().toList();
+    final names = <String, String>{};
+    if (userIds.isNotEmpty) {
+      final profileRows =
+          await SupabaseConfig.client.from('profiles').select('id, first_name, last_name').inFilter('id', userIds);
+      for (final p in profileRows as List) {
+        final row = p as Map<String, dynamic>;
+        names[row['id'] as String] = '${row['first_name'] ?? ''} ${row['last_name'] ?? ''}'.trim();
+      }
+    }
+
+    return rows
+        .map((r) => PendingBankTransfer.fromRow(r as Map<String, dynamic>, clientName: names[r['user_id']] ?? ''))
+        .toList();
+  }
+
+  Future<String> getSlipUrl(String path) async {
+    return SupabaseConfig.client.storage.from('payment-slips').createSignedUrl(path, 60 * 10);
+  }
+
+  Future<void> approveBankTransfer(String orderId) => SupabaseConfig.client.from('orders').update({
+        'bank_transfer_status': 'approved',
+        'payment_status': 'paid',
+        'payment_method': 'bank_transfer',
+        'status': 'confirmed',
+      }).eq('id', orderId);
+
+  Future<void> rejectBankTransfer(String orderId) =>
+      SupabaseConfig.client.from('orders').update({'bank_transfer_status': 'rejected'}).eq('id', orderId);
+
   // ---------------------------------------------------------------------
   // Trainer applications
   // ---------------------------------------------------------------------
