@@ -6,6 +6,8 @@ import '../providers/repository_providers.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_text_field.dart';
+import '../providers/locale_provider.dart';
+import '../l10n/admin_strings.dart';
 
 class CategoriesScreen extends ConsumerStatefulWidget {
   const CategoriesScreen({super.key});
@@ -35,13 +37,14 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
   }
 
   Future<void> _delete(TrainingCategory c) async {
+    final locale = ref.read(adminLocaleProvider);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete this category?'),
+        title: Text(t(locale, 'delete_category_title')),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Confirm')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(t(locale, 'cancel'))),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(t(locale, 'confirm'))),
         ],
       ),
     );
@@ -57,20 +60,21 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final locale = ref.watch(adminLocaleProvider);
     return Column(
       children: [
         Padding(
           padding: const EdgeInsets.all(AppSpacing.md),
           child: Align(
             alignment: Alignment.centerRight,
-            child: ElevatedButton.icon(onPressed: () => _openForm(), icon: const Icon(Icons.add), label: const Text('Add Category')),
+            child: ElevatedButton.icon(onPressed: () => _openForm(), icon: const Icon(Icons.add), label: Text(t(locale, 'add_category'))),
           ),
         ),
         Expanded(
           child: _loading
               ? const Center(child: CircularProgressIndicator())
               : _categories.isEmpty
-                  ? const EmptyState(icon: Icons.category_outlined, message: 'No categories yet')
+                  ? EmptyState(icon: Icons.category_outlined, message: t(locale, 'no_categories_yet'))
                   : ListView.separated(
                       padding: const EdgeInsets.all(AppSpacing.md),
                       itemCount: _categories.length,
@@ -136,8 +140,9 @@ class _CategoryFormDialogState extends ConsumerState<_CategoryFormDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final locale = ref.watch(adminLocaleProvider);
     return AlertDialog(
-      title: Text(widget.existing == null ? 'Add Category' : 'Edit Category'),
+      title: Text(widget.existing == null ? t(locale, 'add_category') : t(locale, 'edit_category')),
       content: SizedBox(
         width: 360,
         child: Form(
@@ -145,16 +150,16 @@ class _CategoryFormDialogState extends ConsumerState<_CategoryFormDialog> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              AppTextField(label: 'Name', controller: _name, validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null),
+              AppTextField(label: t(locale, 'field_name'), controller: _name, validator: (v) => (v == null || v.trim().isEmpty) ? t(locale, 'required_field') : null),
               const SizedBox(height: AppSpacing.sm),
-              AppTextField(label: 'Icon Seed', controller: _iconSeed),
+              AppTextField(label: t(locale, 'field_icon_seed'), controller: _iconSeed),
             ],
           ),
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-        AppButton(label: 'Save', onPressed: _save, isLoading: _saving),
+        TextButton(onPressed: () => Navigator.pop(context, false), child: Text(t(locale, 'cancel'))),
+        AppButton(label: t(locale, 'save'), onPressed: _save, isLoading: _saving),
       ],
     );
   }

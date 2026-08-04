@@ -6,6 +6,8 @@ import '../providers/repository_providers.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_text_field.dart';
+import '../providers/locale_provider.dart';
+import '../l10n/admin_strings.dart';
 
 class ProgramsScreen extends ConsumerStatefulWidget {
   const ProgramsScreen({super.key});
@@ -35,13 +37,14 @@ class _ProgramsScreenState extends ConsumerState<ProgramsScreen> {
   }
 
   Future<void> _delete(TrainingProgram p) async {
+    final locale = ref.read(adminLocaleProvider);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete this program?'),
+        title: Text(t(locale, 'delete_program_title')),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Confirm')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(t(locale, 'cancel'))),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(t(locale, 'confirm'))),
         ],
       ),
     );
@@ -57,20 +60,21 @@ class _ProgramsScreenState extends ConsumerState<ProgramsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final locale = ref.watch(adminLocaleProvider);
     return Column(
       children: [
         Padding(
           padding: const EdgeInsets.all(AppSpacing.md),
           child: Align(
             alignment: Alignment.centerRight,
-            child: ElevatedButton.icon(onPressed: () => _openForm(), icon: const Icon(Icons.add), label: const Text('Add Program')),
+            child: ElevatedButton.icon(onPressed: () => _openForm(), icon: const Icon(Icons.add), label: Text(t(locale, 'add_program'))),
           ),
         ),
         Expanded(
           child: _loading
               ? const Center(child: CircularProgressIndicator())
               : _programs.isEmpty
-                  ? const EmptyState(icon: Icons.fitness_center_outlined, message: 'No programs yet')
+                  ? EmptyState(icon: Icons.fitness_center_outlined, message: t(locale, 'no_programs_yet'))
                   : ListView.separated(
                       padding: const EdgeInsets.all(AppSpacing.md),
                       itemCount: _programs.length,
@@ -92,7 +96,7 @@ class _ProgramsScreenState extends ConsumerState<ProgramsScreen> {
                                   children: [
                                     Text(p.name, style: const TextStyle(fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis),
                                     const SizedBox(height: 4),
-                                    Text('${p.durationWeeks}w · ${p.sessionsCount} sessions · ${p.level.name}', style: const TextStyle(color: AppColors.onSurfaceMuted)),
+                                    Text('${p.durationWeeks}w · ${p.sessionsCount} ${t(locale, 'sessions_suffix')} · ${_levelLabel(locale, p.level)}', style: const TextStyle(color: AppColors.onSurfaceMuted)),
                                   ],
                                 ),
                               ),
@@ -106,6 +110,17 @@ class _ProgramsScreenState extends ConsumerState<ProgramsScreen> {
         ),
       ],
     );
+  }
+}
+
+String _levelLabel(AppLocale locale, ProgramLevel level) {
+  switch (level) {
+    case ProgramLevel.beginner:
+      return t(locale, 'level_beginner');
+    case ProgramLevel.intermediate:
+      return t(locale, 'level_intermediate');
+    case ProgramLevel.advanced:
+      return t(locale, 'level_advanced');
   }
 }
 
@@ -160,8 +175,9 @@ class _ProgramFormDialogState extends ConsumerState<_ProgramFormDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final locale = ref.watch(adminLocaleProvider);
     return AlertDialog(
-      title: Text(widget.existing == null ? 'Add Program' : 'Edit Program'),
+      title: Text(widget.existing == null ? t(locale, 'add_program') : t(locale, 'edit_program')),
       content: SizedBox(
         width: 420,
         child: Form(
@@ -170,22 +186,22 @@ class _ProgramFormDialogState extends ConsumerState<_ProgramFormDialog> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                AppTextField(label: 'Name', controller: _name, validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null),
+                AppTextField(label: t(locale, 'field_name'), controller: _name, validator: (v) => (v == null || v.trim().isEmpty) ? t(locale, 'required_field') : null),
                 const SizedBox(height: AppSpacing.sm),
-                AppTextField(label: 'Subtitle', controller: _subtitle),
+                AppTextField(label: t(locale, 'field_subtitle'), controller: _subtitle),
                 const SizedBox(height: AppSpacing.sm),
-                AppTextField(label: 'Description', controller: _description),
+                AppTextField(label: t(locale, 'field_description'), controller: _description),
                 const SizedBox(height: AppSpacing.sm),
-                AppTextField(label: 'Price From', controller: _priceFrom, keyboardType: TextInputType.number, validator: (v) => double.tryParse(v ?? '') == null ? 'Required' : null),
+                AppTextField(label: t(locale, 'field_price_from'), controller: _priceFrom, keyboardType: TextInputType.number, validator: (v) => double.tryParse(v ?? '') == null ? t(locale, 'required_field') : null),
                 const SizedBox(height: AppSpacing.sm),
-                AppTextField(label: 'Duration (weeks)', controller: _durationWeeks, keyboardType: TextInputType.number, validator: (v) => int.tryParse(v ?? '') == null ? 'Required' : null),
+                AppTextField(label: t(locale, 'field_duration_weeks'), controller: _durationWeeks, keyboardType: TextInputType.number, validator: (v) => int.tryParse(v ?? '') == null ? t(locale, 'required_field') : null),
                 const SizedBox(height: AppSpacing.sm),
-                AppTextField(label: 'Sessions Count', controller: _sessionsCount, keyboardType: TextInputType.number, validator: (v) => int.tryParse(v ?? '') == null ? 'Required' : null),
+                AppTextField(label: t(locale, 'field_sessions_count'), controller: _sessionsCount, keyboardType: TextInputType.number, validator: (v) => int.tryParse(v ?? '') == null ? t(locale, 'required_field') : null),
                 const SizedBox(height: AppSpacing.sm),
                 DropdownButtonFormField<ProgramLevel>(
                   initialValue: _level,
-                  decoration: const InputDecoration(labelText: 'Level'),
-                  items: ProgramLevel.values.map((l) => DropdownMenuItem(value: l, child: Text(l.name))).toList(),
+                  decoration: InputDecoration(labelText: t(locale, 'field_level')),
+                  items: ProgramLevel.values.map((l) => DropdownMenuItem(value: l, child: Text(_levelLabel(locale, l)))).toList(),
                   onChanged: (v) => setState(() => _level = v ?? ProgramLevel.beginner),
                 ),
               ],
@@ -194,8 +210,8 @@ class _ProgramFormDialogState extends ConsumerState<_ProgramFormDialog> {
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-        AppButton(label: 'Save', onPressed: _save, isLoading: _saving),
+        TextButton(onPressed: () => Navigator.pop(context, false), child: Text(t(locale, 'cancel'))),
+        AppButton(label: t(locale, 'save'), onPressed: _save, isLoading: _saving),
       ],
     );
   }

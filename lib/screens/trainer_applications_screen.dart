@@ -6,6 +6,8 @@ import '../theme/app_theme.dart';
 import '../providers/repository_providers.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/app_button.dart';
+import '../providers/locale_provider.dart';
+import '../l10n/admin_strings.dart';
 
 class TrainerApplicationsScreen extends ConsumerStatefulWidget {
   const TrainerApplicationsScreen({super.key});
@@ -42,14 +44,15 @@ class _TrainerApplicationsScreenState extends ConsumerState<TrainerApplicationsS
 
   Future<void> _respond(TrainerApplication app, {required bool approve}) async {
     if (!approve) {
+      final locale = ref.read(adminLocaleProvider);
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('Reject application?'),
-          content: const Text('This will mark the trainer application as rejected.'),
+          title: Text(t(locale, 'reject_application_title')),
+          content: Text(t(locale, 'reject_application_body')),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-            TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Confirm')),
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(t(locale, 'cancel'))),
+            TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(t(locale, 'confirm'))),
           ],
         ),
       );
@@ -66,17 +69,18 @@ class _TrainerApplicationsScreenState extends ConsumerState<TrainerApplicationsS
 
   @override
   Widget build(BuildContext context) {
+    final locale = ref.watch(adminLocaleProvider);
     return Column(
       children: [
         Padding(
           padding: const EdgeInsets.all(AppSpacing.md),
           child: Row(
             children: [
-              _FilterChip(label: 'Pending', selected: _filter == VerificationStatus.pending, onTap: () => setState(() { _filter = VerificationStatus.pending; _load(); })),
+              _FilterChip(label: t(locale, 'filter_pending'), selected: _filter == VerificationStatus.pending, onTap: () => setState(() { _filter = VerificationStatus.pending; _load(); })),
               const SizedBox(width: AppSpacing.sm),
-              _FilterChip(label: 'Approved', selected: _filter == VerificationStatus.approved, onTap: () => setState(() { _filter = VerificationStatus.approved; _load(); })),
+              _FilterChip(label: t(locale, 'filter_approved'), selected: _filter == VerificationStatus.approved, onTap: () => setState(() { _filter = VerificationStatus.approved; _load(); })),
               const SizedBox(width: AppSpacing.sm),
-              _FilterChip(label: 'Rejected', selected: _filter == VerificationStatus.rejected, onTap: () => setState(() { _filter = VerificationStatus.rejected; _load(); })),
+              _FilterChip(label: t(locale, 'filter_rejected'), selected: _filter == VerificationStatus.rejected, onTap: () => setState(() { _filter = VerificationStatus.rejected; _load(); })),
             ],
           ),
         ),
@@ -84,13 +88,14 @@ class _TrainerApplicationsScreenState extends ConsumerState<TrainerApplicationsS
           child: _loading
               ? const Center(child: CircularProgressIndicator())
               : _applications.isEmpty
-                  ? const EmptyState(icon: Icons.assignment_ind_outlined, message: 'No applications found')
+                  ? EmptyState(icon: Icons.assignment_ind_outlined, message: t(locale, 'no_applications_found'))
                   : ListView.separated(
                       padding: const EdgeInsets.all(AppSpacing.md),
                       itemCount: _applications.length,
                       separatorBuilder: (_, index) => const SizedBox(height: AppSpacing.md),
                       itemBuilder: (context, i) => _ApplicationCard(
                         application: _applications[i],
+                        locale: locale,
                         onApprove: () => _respond(_applications[i], approve: true),
                         onReject: () => _respond(_applications[i], approve: false),
                       ),
@@ -115,9 +120,10 @@ class _FilterChip extends StatelessWidget {
 
 class _ApplicationCard extends ConsumerWidget {
   final TrainerApplication application;
+  final AppLocale locale;
   final VoidCallback onApprove;
   final VoidCallback onReject;
-  const _ApplicationCard({required this.application, required this.onApprove, required this.onReject});
+  const _ApplicationCard({required this.application, required this.locale, required this.onApprove, required this.onReject});
 
   Future<void> _openDocument(BuildContext context, WidgetRef ref, String? path) async {
     if (path == null || path.isEmpty) return;
@@ -127,9 +133,9 @@ class _ApplicationCard extends ConsumerWidget {
       showDialog(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('Document link'),
+          title: Text(t(locale, 'document_link')),
           content: SelectableText(url),
-          actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close'))],
+          actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: Text(t(locale, 'close')))],
         ),
       );
     } catch (e) {
@@ -161,7 +167,7 @@ class _ApplicationCard extends ConsumerWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              _StatusBadge(status: application.verificationStatus),
+              _StatusBadge(status: application.verificationStatus, locale: locale),
             ],
           ),
           if (application.trainerEmail.isNotEmpty) ...[
@@ -177,7 +183,7 @@ class _ApplicationCard extends ConsumerWidget {
             Text(application.experienceBio, style: const TextStyle(color: AppColors.onSurfaceMuted)),
           ],
           const SizedBox(height: 4),
-          Text('${application.experienceYears} years experience', style: const TextStyle(color: AppColors.onSurfaceMuted, fontSize: 12)),
+          Text('${application.experienceYears} ${t(locale, 'years_experience')}', style: const TextStyle(color: AppColors.onSurfaceMuted, fontSize: 12)),
           if (application.certifications.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.xs),
             Wrap(
@@ -192,20 +198,20 @@ class _ApplicationCard extends ConsumerWidget {
             runSpacing: AppSpacing.sm,
             children: [
               if (application.idCardFrontPath != null)
-                OutlinedButton.icon(icon: const Icon(Icons.badge_outlined, size: 16), label: const Text('ID Front'), onPressed: () => _openDocument(context, ref, application.idCardFrontPath)),
+                OutlinedButton.icon(icon: const Icon(Icons.badge_outlined, size: 16), label: Text(t(locale, 'id_front')), onPressed: () => _openDocument(context, ref, application.idCardFrontPath)),
               if (application.idCardBackPath != null)
-                OutlinedButton.icon(icon: const Icon(Icons.badge_outlined, size: 16), label: const Text('ID Back'), onPressed: () => _openDocument(context, ref, application.idCardBackPath)),
+                OutlinedButton.icon(icon: const Icon(Icons.badge_outlined, size: 16), label: Text(t(locale, 'id_back')), onPressed: () => _openDocument(context, ref, application.idCardBackPath)),
               for (var i = 0; i < application.certificatePaths.length; i++)
-                OutlinedButton.icon(icon: const Icon(Icons.description_outlined, size: 16), label: Text('Certificate ${i + 1}'), onPressed: () => _openDocument(context, ref, application.certificatePaths[i])),
+                OutlinedButton.icon(icon: const Icon(Icons.description_outlined, size: 16), label: Text('${t(locale, 'certificate_n')} ${i + 1}'), onPressed: () => _openDocument(context, ref, application.certificatePaths[i])),
             ],
           ),
           if (isPending) ...[
             const SizedBox(height: AppSpacing.md),
             Row(
               children: [
-                Expanded(child: AppButton(label: 'Approve', onPressed: onApprove)),
+                Expanded(child: AppButton(label: t(locale, 'approve'), onPressed: onApprove)),
                 const SizedBox(width: AppSpacing.sm),
-                Expanded(child: AppButton(label: 'Reject', outlined: true, onPressed: onReject)),
+                Expanded(child: AppButton(label: t(locale, 'reject'), outlined: true, onPressed: onReject)),
               ],
             ),
           ],
@@ -217,7 +223,8 @@ class _ApplicationCard extends ConsumerWidget {
 
 class _StatusBadge extends StatelessWidget {
   final VerificationStatus status;
-  const _StatusBadge({required this.status});
+  final AppLocale locale;
+  const _StatusBadge({required this.status, required this.locale});
 
   @override
   Widget build(BuildContext context) {
@@ -226,15 +233,15 @@ class _StatusBadge extends StatelessWidget {
     switch (status) {
       case VerificationStatus.pending:
         color = AppColors.primary;
-        label = 'Pending';
+        label = t(locale, 'status_pending');
         break;
       case VerificationStatus.approved:
         color = AppColors.success;
-        label = 'Approved';
+        label = t(locale, 'status_approved');
         break;
       case VerificationStatus.rejected:
         color = AppColors.error;
-        label = 'Rejected';
+        label = t(locale, 'status_rejected');
         break;
     }
     return Container(

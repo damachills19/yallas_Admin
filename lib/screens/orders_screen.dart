@@ -6,6 +6,8 @@ import '../theme/app_theme.dart';
 import '../providers/repository_providers.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/app_button.dart';
+import '../providers/locale_provider.dart';
+import '../l10n/admin_strings.dart';
 
 class OrdersScreen extends ConsumerStatefulWidget {
   const OrdersScreen({super.key});
@@ -103,14 +105,15 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
   Future<void> _viewSlip(String? path) async {
     if (path == null) return;
     try {
+      final locale = ref.read(adminLocaleProvider);
       final url = await ref.read(adminRepositoryProvider).getSlipUrl(path);
       if (!mounted) return;
       showDialog(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('Transfer slip link'),
+          title: Text(t(locale, 'transfer_slip_link')),
           content: SelectableText(url),
-          actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close'))],
+          actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: Text(t(locale, 'close')))],
         ),
       );
     } catch (e) {
@@ -121,6 +124,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final locale = ref.watch(adminLocaleProvider);
     return Column(
       children: [
         Padding(
@@ -129,7 +133,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
             spacing: AppSpacing.sm,
             children: [
               ChoiceChip(
-                label: const Text('Unassigned'),
+                label: Text(t(locale, 'view_unassigned')),
                 selected: _view == _View.unassigned,
                 selectedColor: AppColors.primaryLight,
                 onSelected: (_) => setState(() {
@@ -138,7 +142,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
                 }),
               ),
               ChoiceChip(
-                label: const Text('All Paid Orders'),
+                label: Text(t(locale, 'view_all_paid')),
                 selected: _view == _View.allPaid,
                 selectedColor: AppColors.primaryLight,
                 onSelected: (_) => setState(() {
@@ -147,7 +151,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
                 }),
               ),
               ChoiceChip(
-                label: const Text('Cash Orders (unpaid)'),
+                label: Text(t(locale, 'view_cash_orders')),
                 selected: _view == _View.cashOrders,
                 selectedColor: AppColors.primaryLight,
                 onSelected: (_) => setState(() {
@@ -156,7 +160,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
                 }),
               ),
               ChoiceChip(
-                label: const Text('Bank Transfers (pending)'),
+                label: Text(t(locale, 'view_bank_transfers')),
                 selected: _view == _View.bankTransfers,
                 selectedColor: AppColors.primaryLight,
                 onSelected: (_) => setState(() {
@@ -172,13 +176,14 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
               ? const Center(child: CircularProgressIndicator())
               : _view == _View.bankTransfers
                   ? (_transfers.isEmpty
-                      ? const EmptyState(icon: Icons.account_balance_outlined, message: 'No pending bank transfers')
+                      ? EmptyState(icon: Icons.account_balance_outlined, message: t(locale, 'no_pending_bank_transfers'))
                       : ListView.separated(
                           padding: const EdgeInsets.all(AppSpacing.md),
                           itemCount: _transfers.length,
                           separatorBuilder: (_, index) => const SizedBox(height: AppSpacing.md),
                           itemBuilder: (context, i) => _BankTransferCard(
                             transfer: _transfers[i],
+                            locale: locale,
                             onViewSlip: () => _viewSlip(_transfers[i].slipPath),
                             onApprove: () => _reviewTransfer(_transfers[i], approve: true),
                             onReject: () => _reviewTransfer(_transfers[i], approve: false),
@@ -187,7 +192,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
                   : (_orders.isEmpty
                       ? EmptyState(
                           icon: Icons.receipt_long_outlined,
-                          message: _view == _View.cashOrders ? 'No unpaid cash orders' : 'No paid orders found',
+                          message: _view == _View.cashOrders ? t(locale, 'no_unpaid_cash_orders') : t(locale, 'no_paid_orders_found'),
                         )
                       : ListView.separated(
                           padding: const EdgeInsets.all(AppSpacing.md),
@@ -196,6 +201,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
                           itemBuilder: (context, i) => _OrderCard(
                             order: _orders[i],
                             roster: _roster,
+                            locale: locale,
                             isCashUnpaid: _view == _View.cashOrders,
                             onAssign: (trainer) => _assign(_orders[i], trainer),
                             onMarkPaid: () => _markPaid(_orders[i]),
@@ -209,11 +215,13 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
 
 class _BankTransferCard extends StatelessWidget {
   final PendingBankTransfer transfer;
+  final AppLocale locale;
   final VoidCallback onViewSlip;
   final VoidCallback onApprove;
   final VoidCallback onReject;
   const _BankTransferCard({
     required this.transfer,
+    required this.locale,
     required this.onViewSlip,
     required this.onApprove,
     required this.onReject,
@@ -244,15 +252,15 @@ class _BankTransferCard extends StatelessWidget {
           const SizedBox(height: AppSpacing.sm),
           OutlinedButton.icon(
             icon: const Icon(Icons.receipt_long_outlined, size: 16),
-            label: const Text('View Transfer Slip'),
+            label: Text(t(locale, 'view_transfer_slip')),
             onPressed: onViewSlip,
           ),
           const SizedBox(height: AppSpacing.sm),
           Row(
             children: [
-              Expanded(child: AppButton(label: 'Approve', onPressed: onApprove)),
+              Expanded(child: AppButton(label: t(locale, 'approve'), onPressed: onApprove)),
               const SizedBox(width: AppSpacing.sm),
-              Expanded(child: AppButton(label: 'Reject', outlined: true, onPressed: onReject)),
+              Expanded(child: AppButton(label: t(locale, 'reject'), outlined: true, onPressed: onReject)),
             ],
           ),
         ],
@@ -264,12 +272,14 @@ class _BankTransferCard extends StatelessWidget {
 class _OrderCard extends StatelessWidget {
   final PaidOrder order;
   final List<TrainerRosterEntry> roster;
+  final AppLocale locale;
   final ValueChanged<TrainerRosterEntry> onAssign;
   final bool isCashUnpaid;
   final VoidCallback? onMarkPaid;
   const _OrderCard({
     required this.order,
     required this.roster,
+    required this.locale,
     required this.onAssign,
     this.isCashUnpaid = false,
     this.onMarkPaid,
@@ -306,15 +316,15 @@ class _OrderCard extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.sm),
           if (isCashUnpaid)
-            AppButton(label: 'Mark as Paid', onPressed: onMarkPaid)
+            AppButton(label: t(locale, 'mark_as_paid'), onPressed: onMarkPaid)
           else if (order.trainerName != null)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 4),
               decoration: BoxDecoration(color: AppColors.success.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(AppRadius.pill)),
-              child: Text('Assigned to ${order.trainerName}', style: const TextStyle(color: AppColors.success, fontWeight: FontWeight.w600, fontSize: 12)),
+              child: Text('${t(locale, 'assigned_to')} ${order.trainerName}', style: const TextStyle(color: AppColors.success, fontWeight: FontWeight.w600, fontSize: 12)),
             )
           else
-            _AssignRow(roster: roster, onAssign: onAssign),
+            _AssignRow(roster: roster, locale: locale, onAssign: onAssign),
         ],
       ),
     );
@@ -323,8 +333,9 @@ class _OrderCard extends StatelessWidget {
 
 class _AssignRow extends StatefulWidget {
   final List<TrainerRosterEntry> roster;
+  final AppLocale locale;
   final ValueChanged<TrainerRosterEntry> onAssign;
-  const _AssignRow({required this.roster, required this.onAssign});
+  const _AssignRow({required this.roster, required this.locale, required this.onAssign});
 
   @override
   State<_AssignRow> createState() => _AssignRowState();
@@ -336,7 +347,7 @@ class _AssignRowState extends State<_AssignRow> {
   @override
   Widget build(BuildContext context) {
     if (widget.roster.isEmpty) {
-      return const Text('No trainers with a linked account yet', style: TextStyle(color: AppColors.onSurfaceMuted, fontSize: 12));
+      return Text(t(widget.locale, 'no_trainers_linked'), style: const TextStyle(color: AppColors.onSurfaceMuted, fontSize: 12));
     }
     return Row(
       children: [
@@ -349,16 +360,16 @@ class _AssignRowState extends State<_AssignRow> {
               border: OutlineInputBorder(),
               contentPadding: EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 8),
             ),
-            hint: const Text('Select trainer'),
+            hint: Text(t(widget.locale, 'select_trainer')),
             items: widget.roster
-                .map((t) => DropdownMenuItem(value: t, child: Text('${t.name} (${t.activeClientCount} clients)')))
+                .map((entry) => DropdownMenuItem(value: entry, child: Text('${entry.name} (${entry.activeClientCount} ${t(widget.locale, 'clients_suffix')})')))
                 .toList(),
-            onChanged: (t) => setState(() => _selected = t),
+            onChanged: (v) => setState(() => _selected = v),
           ),
         ),
         const SizedBox(width: AppSpacing.sm),
         AppButton(
-          label: 'Assign',
+          label: t(widget.locale, 'assign'),
           onPressed: _selected == null ? null : () => widget.onAssign(_selected!),
         ),
       ],

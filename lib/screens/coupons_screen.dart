@@ -6,6 +6,8 @@ import '../providers/repository_providers.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_text_field.dart';
+import '../providers/locale_provider.dart';
+import '../l10n/admin_strings.dart';
 
 class CouponsScreen extends ConsumerStatefulWidget {
   const CouponsScreen({super.key});
@@ -40,13 +42,14 @@ class _CouponsScreenState extends ConsumerState<CouponsScreen> {
   }
 
   Future<void> _delete(Coupon c) async {
+    final locale = ref.read(adminLocaleProvider);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete this coupon?'),
+        title: Text(t(locale, 'delete_coupon_title')),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Confirm')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(t(locale, 'cancel'))),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(t(locale, 'confirm'))),
         ],
       ),
     );
@@ -62,20 +65,21 @@ class _CouponsScreenState extends ConsumerState<CouponsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final locale = ref.watch(adminLocaleProvider);
     return Column(
       children: [
         Padding(
           padding: const EdgeInsets.all(AppSpacing.md),
           child: Align(
             alignment: Alignment.centerRight,
-            child: ElevatedButton.icon(onPressed: _openForm, icon: const Icon(Icons.add), label: const Text('Add Coupon')),
+            child: ElevatedButton.icon(onPressed: _openForm, icon: const Icon(Icons.add), label: Text(t(locale, 'add_coupon'))),
           ),
         ),
         Expanded(
           child: _loading
               ? const Center(child: CircularProgressIndicator())
               : _coupons.isEmpty
-                  ? const EmptyState(icon: Icons.local_offer_outlined, message: 'No coupons yet')
+                  ? EmptyState(icon: Icons.local_offer_outlined, message: t(locale, 'no_coupons_yet'))
                   : ListView.separated(
                       padding: const EdgeInsets.all(AppSpacing.md),
                       itemCount: _coupons.length,
@@ -146,8 +150,9 @@ class _CouponFormDialogState extends ConsumerState<_CouponFormDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final locale = ref.watch(adminLocaleProvider);
     return AlertDialog(
-      title: const Text('Add Coupon'),
+      title: Text(t(locale, 'add_coupon')),
       content: SizedBox(
         width: 360,
         child: Form(
@@ -155,13 +160,13 @@ class _CouponFormDialogState extends ConsumerState<_CouponFormDialog> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              AppTextField(label: 'Code', controller: _code, validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null),
+              AppTextField(label: t(locale, 'field_code'), controller: _code, validator: (v) => (v == null || v.trim().isEmpty) ? t(locale, 'required_field') : null),
               const SizedBox(height: AppSpacing.sm),
-              AppTextField(label: 'Discount %', controller: _discountPercent, keyboardType: TextInputType.number, validator: (v) => double.tryParse(v ?? '') == null ? 'Required' : null),
+              AppTextField(label: t(locale, 'field_discount_percent'), controller: _discountPercent, keyboardType: TextInputType.number, validator: (v) => double.tryParse(v ?? '') == null ? t(locale, 'required_field') : null),
               const SizedBox(height: AppSpacing.sm),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
-                title: const Text('Active'),
+                title: Text(t(locale, 'field_active')),
                 value: _isActive,
                 onChanged: (v) => setState(() => _isActive = v),
               ),
@@ -170,8 +175,8 @@ class _CouponFormDialogState extends ConsumerState<_CouponFormDialog> {
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-        AppButton(label: 'Save', onPressed: _save, isLoading: _saving),
+        TextButton(onPressed: () => Navigator.pop(context, false), child: Text(t(locale, 'cancel'))),
+        AppButton(label: t(locale, 'save'), onPressed: _save, isLoading: _saving),
       ],
     );
   }

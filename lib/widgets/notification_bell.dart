@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/repository_providers.dart';
 import '../repositories/admin_repository.dart';
 import '../theme/app_theme.dart';
+import '../providers/locale_provider.dart';
+import '../l10n/admin_strings.dart';
 
 /// Persistent-chrome bell icon showing a badge with the total count of
 /// items awaiting admin review (pending trainer applications + pending
@@ -38,10 +40,11 @@ class _NotificationBellState extends ConsumerState<NotificationBell> {
   }
 
   void _showBreakdown(PendingActionCounts counts) {
+    final locale = ref.read(adminLocaleProvider);
     showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Pending Actions'),
+        title: Text(t(locale, 'pending_actions')),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -50,7 +53,7 @@ class _NotificationBellState extends ConsumerState<NotificationBell> {
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.assignment_ind_outlined, color: AppColors.primary),
-                title: Text('${counts.trainerApplications} trainer application(s) pending'),
+                title: Text('${counts.trainerApplications} ${t(locale, 'trainer_applications_pending')}'),
                 onTap: () {
                   Navigator.of(dialogContext).pop();
                   widget.onNavigate(1);
@@ -60,17 +63,17 @@ class _NotificationBellState extends ConsumerState<NotificationBell> {
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.receipt_long_outlined, color: AppColors.primary),
-                title: Text('${counts.bankTransfers} bank transfer(s) pending review'),
+                title: Text('${counts.bankTransfers} ${t(locale, 'bank_transfers_pending_review')}'),
                 onTap: () {
                   Navigator.of(dialogContext).pop();
                   widget.onNavigate(2);
                 },
               ),
-            if (counts.total == 0) const Text('Nothing pending. All caught up!'),
+            if (counts.total == 0) Text(t(locale, 'nothing_pending')),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: const Text('Close')),
+          TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: Text(t(locale, 'close'))),
         ],
       ),
     );
@@ -78,12 +81,13 @@ class _NotificationBellState extends ConsumerState<NotificationBell> {
 
   @override
   Widget build(BuildContext context) {
+    final locale = ref.watch(adminLocaleProvider);
     return FutureBuilder<PendingActionCounts>(
       future: _future,
       builder: (context, snapshot) {
         final total = snapshot.data?.total ?? 0;
         return IconButton(
-          tooltip: 'Pending actions',
+          tooltip: t(locale, 'pending_actions_tooltip'),
           onPressed: _onPressed,
           icon: Badge(
             label: Text('$total'),

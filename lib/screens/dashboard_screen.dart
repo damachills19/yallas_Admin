@@ -4,6 +4,8 @@ import 'package:fl_chart/fl_chart.dart';
 import '../models/trainer_application.dart';
 import '../theme/app_theme.dart';
 import '../providers/repository_providers.dart';
+import '../providers/locale_provider.dart';
+import '../l10n/admin_strings.dart';
 
 class _DashboardData {
   final int pendingApplications;
@@ -29,6 +31,7 @@ class DashboardScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final repo = ref.watch(adminRepositoryProvider);
+    final locale = ref.watch(adminLocaleProvider);
 
     Future<_DashboardData> load() async {
       final applications = await repo.getApplications(filterStatus: VerificationStatus.pending);
@@ -66,22 +69,22 @@ class DashboardScreen extends ConsumerWidget {
                 crossAxisSpacing: AppSpacing.md,
                 childAspectRatio: 1.4,
                 children: [
-                  _StatCard(icon: Icons.assignment_ind_outlined, value: '${d.pendingApplications}', label: 'Pending Applications'),
-                  _StatCard(icon: Icons.support_agent_outlined, value: '${d.openComplaints}', label: 'Open Complaints'),
-                  _StatCard(icon: Icons.card_giftcard_outlined, value: '${d.totalPackages}', label: 'Total Packages'),
-                  _StatCard(icon: Icons.fitness_center_outlined, value: '${d.totalPrograms}', label: 'Total Programs'),
+                  _StatCard(icon: Icons.assignment_ind_outlined, value: '${d.pendingApplications}', label: t(locale, 'stat_pending_applications')),
+                  _StatCard(icon: Icons.support_agent_outlined, value: '${d.openComplaints}', label: t(locale, 'stat_open_complaints')),
+                  _StatCard(icon: Icons.card_giftcard_outlined, value: '${d.totalPackages}', label: t(locale, 'stat_total_packages')),
+                  _StatCard(icon: Icons.fitness_center_outlined, value: '${d.totalPrograms}', label: t(locale, 'stat_total_programs')),
                 ],
               ),
               const SizedBox(height: AppSpacing.lg),
               _ChartCard(
-                title: 'User Growth (last 6 months)',
+                title: t(locale, 'chart_user_growth'),
                 height: 320,
-                child: _UserGrowthChart(monthly: d.userGrowth),
+                child: _UserGrowthChart(monthly: d.userGrowth, locale: locale),
               ),
               const SizedBox(height: AppSpacing.lg),
               _ChartCard(
-                title: 'Trainer Applications by Status',
-                child: _ApplicationStatusPieChart(counts: d.applicationStatusCounts),
+                title: t(locale, 'chart_applications_by_status'),
+                child: _ApplicationStatusPieChart(counts: d.applicationStatusCounts, locale: locale),
               ),
             ],
           ),
@@ -122,7 +125,8 @@ class _ChartCard extends StatelessWidget {
 class _UserGrowthChart extends StatelessWidget {
   /// One entry per month: {'month': 1-12, 'client': cumulative count, 'trainer': cumulative count}.
   final List<Map<String, int>> monthly;
-  const _UserGrowthChart({required this.monthly});
+  final AppLocale locale;
+  const _UserGrowthChart({required this.monthly, required this.locale});
 
   static const _monthNames = [
     '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
@@ -131,7 +135,7 @@ class _UserGrowthChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (monthly.isEmpty) {
-      return const Center(child: Text('No signups yet', style: TextStyle(color: AppColors.onSurfaceMuted)));
+      return Center(child: Text(t(locale, 'no_signups_yet'), style: const TextStyle(color: AppColors.onSurfaceMuted)));
     }
     final clientSpots = <FlSpot>[];
     final trainerSpots = <FlSpot>[];
@@ -147,10 +151,10 @@ class _UserGrowthChart extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
-          children: const [
-            _LegendDot(color: Colors.blue, label: 'Users'),
-            SizedBox(width: 16),
-            _LegendDot(color: AppColors.primary, label: 'Trainers'),
+          children: [
+            _LegendDot(color: Colors.blue, label: t(locale, 'legend_users')),
+            const SizedBox(width: 16),
+            _LegendDot(color: AppColors.primary, label: t(locale, 'legend_trainers')),
           ],
         ),
         const SizedBox(height: AppSpacing.md),
@@ -226,7 +230,8 @@ class _UserGrowthChart extends StatelessWidget {
 
 class _ApplicationStatusPieChart extends StatelessWidget {
   final Map<String, int> counts;
-  const _ApplicationStatusPieChart({required this.counts});
+  final AppLocale locale;
+  const _ApplicationStatusPieChart({required this.counts, required this.locale});
 
   @override
   Widget build(BuildContext context) {
@@ -236,7 +241,7 @@ class _ApplicationStatusPieChart extends StatelessWidget {
     final total = pending + approved + rejected;
 
     if (total == 0) {
-      return const Center(child: Text('No trainer applications yet', style: TextStyle(color: AppColors.onSurfaceMuted)));
+      return Center(child: Text(t(locale, 'no_applications_yet'), style: const TextStyle(color: AppColors.onSurfaceMuted)));
     }
 
     return Row(
@@ -256,12 +261,12 @@ class _ApplicationStatusPieChart extends StatelessWidget {
         ),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: const [
-            _LegendDot(color: Colors.orange, label: 'Pending'),
-            SizedBox(height: 6),
-            _LegendDot(color: Colors.green, label: 'Approved'),
-            SizedBox(height: 6),
-            _LegendDot(color: Colors.redAccent, label: 'Rejected'),
+          children: [
+            _LegendDot(color: Colors.orange, label: t(locale, 'legend_pending')),
+            const SizedBox(height: 6),
+            _LegendDot(color: Colors.green, label: t(locale, 'legend_approved')),
+            const SizedBox(height: 6),
+            _LegendDot(color: Colors.redAccent, label: t(locale, 'legend_rejected')),
           ],
         ),
       ],

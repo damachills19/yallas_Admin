@@ -7,6 +7,8 @@ import '../providers/repository_providers.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_text_field.dart';
+import '../providers/locale_provider.dart';
+import '../l10n/admin_strings.dart';
 
 class PackagesScreen extends ConsumerStatefulWidget {
   const PackagesScreen({super.key});
@@ -40,13 +42,14 @@ class _PackagesScreenState extends ConsumerState<PackagesScreen> {
   }
 
   Future<void> _delete(TrainingPackage p) async {
+    final locale = ref.read(adminLocaleProvider);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete this package?'),
+        title: Text(t(locale, 'delete_package_title')),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Confirm')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(t(locale, 'cancel'))),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(t(locale, 'confirm'))),
         ],
       ),
     );
@@ -62,20 +65,21 @@ class _PackagesScreenState extends ConsumerState<PackagesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final locale = ref.watch(adminLocaleProvider);
     return Column(
       children: [
         Padding(
           padding: const EdgeInsets.all(AppSpacing.md),
           child: Align(
             alignment: Alignment.centerRight,
-            child: ElevatedButton.icon(onPressed: () => _openForm(), icon: const Icon(Icons.add), label: const Text('Add Package')),
+            child: ElevatedButton.icon(onPressed: () => _openForm(), icon: const Icon(Icons.add), label: Text(t(locale, 'add_package'))),
           ),
         ),
         Expanded(
           child: _loading
               ? const Center(child: CircularProgressIndicator())
               : _packages.isEmpty
-                  ? const EmptyState(icon: Icons.card_giftcard_outlined, message: 'No packages yet')
+                  ? EmptyState(icon: Icons.card_giftcard_outlined, message: t(locale, 'no_packages_yet'))
                   : ListView.separated(
                       padding: const EdgeInsets.all(AppSpacing.md),
                       itemCount: _packages.length,
@@ -97,7 +101,7 @@ class _PackagesScreenState extends ConsumerState<PackagesScreen> {
                                   children: [
                                     Text(p.name, style: const TextStyle(fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis),
                                     const SizedBox(height: 4),
-                                    Text('${p.price.toStringAsFixed(0)} SAR · ${p.sessionsCount} sessions', style: const TextStyle(color: AppColors.onSurfaceMuted)),
+                                    Text('${p.price.toStringAsFixed(0)} SAR · ${p.sessionsCount} ${t(locale, 'sessions_suffix')}', style: const TextStyle(color: AppColors.onSurfaceMuted)),
                                   ],
                                 ),
                               ),
@@ -175,8 +179,9 @@ class _PackageFormDialogState extends ConsumerState<_PackageFormDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final locale = ref.watch(adminLocaleProvider);
     return AlertDialog(
-      title: Text(widget.existing == null ? 'Add Package' : 'Edit Package'),
+      title: Text(widget.existing == null ? t(locale, 'add_package') : t(locale, 'edit_package')),
       content: SizedBox(
         width: 420,
         child: Form(
@@ -185,33 +190,33 @@ class _PackageFormDialogState extends ConsumerState<_PackageFormDialog> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                AppTextField(label: 'Name', controller: _name, validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null),
+                AppTextField(label: t(locale, 'field_name'), controller: _name, validator: (v) => (v == null || v.trim().isEmpty) ? t(locale, 'required_field') : null),
                 const SizedBox(height: AppSpacing.sm),
-                AppTextField(label: 'Description', controller: _description),
+                AppTextField(label: t(locale, 'field_description'), controller: _description),
                 const SizedBox(height: AppSpacing.sm),
-                AppTextField(label: 'Price', controller: _price, keyboardType: TextInputType.number, validator: (v) => double.tryParse(v ?? '') == null ? 'Required' : null),
+                AppTextField(label: t(locale, 'field_price'), controller: _price, keyboardType: TextInputType.number, validator: (v) => double.tryParse(v ?? '') == null ? t(locale, 'required_field') : null),
                 const SizedBox(height: AppSpacing.sm),
-                AppTextField(label: 'Original Price (optional)', controller: _originalPrice, keyboardType: TextInputType.number),
+                AppTextField(label: t(locale, 'field_original_price'), controller: _originalPrice, keyboardType: TextInputType.number),
                 const SizedBox(height: AppSpacing.sm),
-                AppTextField(label: 'Sessions Count', controller: _sessionsCount, keyboardType: TextInputType.number, validator: (v) => int.tryParse(v ?? '') == null ? 'Required' : null),
+                AppTextField(label: t(locale, 'field_sessions_count'), controller: _sessionsCount, keyboardType: TextInputType.number, validator: (v) => int.tryParse(v ?? '') == null ? t(locale, 'required_field') : null),
                 const SizedBox(height: AppSpacing.sm),
                 DropdownButtonFormField<String>(
                   initialValue: _categoryId,
-                  decoration: const InputDecoration(labelText: 'Category'),
+                  decoration: InputDecoration(labelText: t(locale, 'field_category')),
                   items: widget.categories.map((c) => DropdownMenuItem(value: c.id, child: Text(c.name))).toList(),
                   onChanged: (v) => setState(() => _categoryId = v),
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Customizable'),
+                  title: Text(t(locale, 'field_customizable')),
                   value: _isCustomizable,
                   onChanged: (v) => setState(() => _isCustomizable = v),
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 Row(
                   children: [
-                    Expanded(child: AppTextField(label: 'Included item', controller: _includedItemInput)),
+                    Expanded(child: AppTextField(label: t(locale, 'field_included_item'), controller: _includedItemInput)),
                     IconButton(
                       icon: const Icon(Icons.add_circle, color: AppColors.primary),
                       onPressed: () {
@@ -236,8 +241,8 @@ class _PackageFormDialogState extends ConsumerState<_PackageFormDialog> {
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-        AppButton(label: 'Save', onPressed: _save, isLoading: _saving),
+        TextButton(onPressed: () => Navigator.pop(context, false), child: Text(t(locale, 'cancel'))),
+        AppButton(label: t(locale, 'save'), onPressed: _save, isLoading: _saving),
       ],
     );
   }

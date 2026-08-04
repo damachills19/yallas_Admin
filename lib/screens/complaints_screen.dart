@@ -6,6 +6,8 @@ import '../theme/app_theme.dart';
 import '../providers/repository_providers.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/app_button.dart';
+import '../providers/locale_provider.dart';
+import '../l10n/admin_strings.dart';
 
 class ComplaintsScreen extends ConsumerStatefulWidget {
   const ComplaintsScreen({super.key});
@@ -37,6 +39,7 @@ class _ComplaintsScreenState extends ConsumerState<ComplaintsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final locale = ref.watch(adminLocaleProvider);
     return Column(
       children: [
         Padding(
@@ -44,11 +47,11 @@ class _ComplaintsScreenState extends ConsumerState<ComplaintsScreen> {
           child: Wrap(
             spacing: AppSpacing.sm,
             children: [
-              _FilterChip(label: 'All', selected: _filter == null, onTap: () => setState(() { _filter = null; _load(); })),
-              _FilterChip(label: 'Open', selected: _filter == 'open', onTap: () => setState(() { _filter = 'open'; _load(); })),
-              _FilterChip(label: 'In Progress', selected: _filter == 'in_progress', onTap: () => setState(() { _filter = 'in_progress'; _load(); })),
-              _FilterChip(label: 'Resolved', selected: _filter == 'resolved', onTap: () => setState(() { _filter = 'resolved'; _load(); })),
-              _FilterChip(label: 'Closed', selected: _filter == 'closed', onTap: () => setState(() { _filter = 'closed'; _load(); })),
+              _FilterChip(label: t(locale, 'filter_all'), selected: _filter == null, onTap: () => setState(() { _filter = null; _load(); })),
+              _FilterChip(label: t(locale, 'filter_open'), selected: _filter == 'open', onTap: () => setState(() { _filter = 'open'; _load(); })),
+              _FilterChip(label: t(locale, 'filter_in_progress'), selected: _filter == 'in_progress', onTap: () => setState(() { _filter = 'in_progress'; _load(); })),
+              _FilterChip(label: t(locale, 'filter_resolved'), selected: _filter == 'resolved', onTap: () => setState(() { _filter = 'resolved'; _load(); })),
+              _FilterChip(label: t(locale, 'filter_closed'), selected: _filter == 'closed', onTap: () => setState(() { _filter = 'closed'; _load(); })),
             ],
           ),
         ),
@@ -56,12 +59,12 @@ class _ComplaintsScreenState extends ConsumerState<ComplaintsScreen> {
           child: _loading
               ? const Center(child: CircularProgressIndicator())
               : _complaints.isEmpty
-                  ? const EmptyState(icon: Icons.support_agent_outlined, message: 'No complaints found')
+                  ? EmptyState(icon: Icons.support_agent_outlined, message: t(locale, 'no_complaints_found'))
                   : ListView.separated(
                       padding: const EdgeInsets.all(AppSpacing.md),
                       itemCount: _complaints.length,
                       separatorBuilder: (_, index) => const SizedBox(height: AppSpacing.md),
-                      itemBuilder: (context, i) => _ComplaintCard(complaint: _complaints[i], onChanged: _load),
+                      itemBuilder: (context, i) => _ComplaintCard(complaint: _complaints[i], locale: locale, onChanged: _load),
                     ),
         ),
       ],
@@ -83,8 +86,9 @@ class _FilterChip extends StatelessWidget {
 
 class _ComplaintCard extends ConsumerStatefulWidget {
   final Complaint complaint;
+  final AppLocale locale;
   final VoidCallback onChanged;
-  const _ComplaintCard({required this.complaint, required this.onChanged});
+  const _ComplaintCard({required this.complaint, required this.locale, required this.onChanged});
 
   @override
   ConsumerState<_ComplaintCard> createState() => _ComplaintCardState();
@@ -128,8 +132,8 @@ class _ComplaintCardState extends ConsumerState<_ComplaintCard> {
             onTap: () => setState(() => _expanded = !_expanded),
             child: Row(
               children: [
-                Expanded(child: Text(c.subject.isEmpty ? '(no subject)' : c.subject, style: const TextStyle(fontWeight: FontWeight.bold))),
-                _StatusBadge(status: c.status),
+                Expanded(child: Text(c.subject.isEmpty ? t(widget.locale, 'no_subject') : c.subject, style: const TextStyle(fontWeight: FontWeight.bold))),
+                _StatusBadge(status: c.status, locale: widget.locale),
                 Icon(_expanded ? Icons.expand_less : Icons.expand_more),
               ],
             ),
@@ -139,16 +143,16 @@ class _ComplaintCardState extends ConsumerState<_ComplaintCard> {
             const SizedBox(height: AppSpacing.sm),
             Text(c.message),
             const SizedBox(height: AppSpacing.md),
-            TextField(controller: _response, maxLines: 3, decoration: const InputDecoration(labelText: 'Admin response')),
+            TextField(controller: _response, maxLines: 3, decoration: InputDecoration(labelText: t(widget.locale, 'admin_response'))),
             const SizedBox(height: AppSpacing.sm),
-            AppButton(label: 'Send Response', onPressed: _sendResponse, isLoading: _saving),
+            AppButton(label: t(widget.locale, 'send_response'), onPressed: _sendResponse, isLoading: _saving),
             const SizedBox(height: AppSpacing.sm),
             Wrap(
               spacing: AppSpacing.sm,
               children: [
-                OutlinedButton(onPressed: () => _updateStatus(ComplaintStatus.inProgress), child: const Text('In Progress')),
-                OutlinedButton(onPressed: () => _updateStatus(ComplaintStatus.resolved), child: const Text('Resolved')),
-                OutlinedButton(onPressed: () => _updateStatus(ComplaintStatus.closed), child: const Text('Closed')),
+                OutlinedButton(onPressed: () => _updateStatus(ComplaintStatus.inProgress), child: Text(t(widget.locale, 'filter_in_progress'))),
+                OutlinedButton(onPressed: () => _updateStatus(ComplaintStatus.resolved), child: Text(t(widget.locale, 'filter_resolved'))),
+                OutlinedButton(onPressed: () => _updateStatus(ComplaintStatus.closed), child: Text(t(widget.locale, 'filter_closed'))),
               ],
             ),
           ],
@@ -160,7 +164,8 @@ class _ComplaintCardState extends ConsumerState<_ComplaintCard> {
 
 class _StatusBadge extends StatelessWidget {
   final ComplaintStatus status;
-  const _StatusBadge({required this.status});
+  final AppLocale locale;
+  const _StatusBadge({required this.status, required this.locale});
 
   @override
   Widget build(BuildContext context) {
@@ -169,19 +174,19 @@ class _StatusBadge extends StatelessWidget {
     switch (status) {
       case ComplaintStatus.open:
         color = AppColors.primary;
-        label = 'Open';
+        label = t(locale, 'complaint_status_open');
         break;
       case ComplaintStatus.inProgress:
         color = AppColors.warning;
-        label = 'In Progress';
+        label = t(locale, 'complaint_status_in_progress');
         break;
       case ComplaintStatus.resolved:
         color = AppColors.success;
-        label = 'Resolved';
+        label = t(locale, 'complaint_status_resolved');
         break;
       case ComplaintStatus.closed:
         color = AppColors.onSurfaceMuted;
-        label = 'Closed';
+        label = t(locale, 'complaint_status_closed');
         break;
     }
     return Container(
