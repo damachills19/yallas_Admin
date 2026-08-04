@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../theme/app_theme.dart';
 import '../providers/auth_provider.dart';
+import '../providers/locale_provider.dart';
+import '../l10n/admin_strings.dart';
 import 'dashboard_screen.dart';
 import 'trainer_applications_screen.dart';
 import 'orders_screen.dart';
@@ -10,25 +12,27 @@ import 'programs_screen.dart';
 import 'categories_screen.dart';
 import 'coupons_screen.dart';
 import 'complaints_screen.dart';
+import '../widgets/notification_bell.dart';
+import '../widgets/locale_toggle.dart';
 
 const _wideBreakpoint = 800.0;
 
 class _Section {
   final IconData icon;
-  final String label;
+  final String labelKey;
   final Widget screen;
-  const _Section({required this.icon, required this.label, required this.screen});
+  const _Section({required this.icon, required this.labelKey, required this.screen});
 }
 
 final _sections = [
-  const _Section(icon: Icons.dashboard_outlined, label: 'Dashboard', screen: DashboardScreen()),
-  const _Section(icon: Icons.assignment_ind_outlined, label: 'Trainer Applications', screen: TrainerApplicationsScreen()),
-  const _Section(icon: Icons.receipt_long_outlined, label: 'Orders & Allocation', screen: OrdersScreen()),
-  const _Section(icon: Icons.card_giftcard_outlined, label: 'Packages', screen: PackagesScreen()),
-  const _Section(icon: Icons.fitness_center_outlined, label: 'Programs', screen: ProgramsScreen()),
-  const _Section(icon: Icons.category_outlined, label: 'Categories', screen: CategoriesScreen()),
-  const _Section(icon: Icons.local_offer_outlined, label: 'Coupons', screen: CouponsScreen()),
-  const _Section(icon: Icons.support_agent_outlined, label: 'Complaints', screen: ComplaintsScreen()),
+  const _Section(icon: Icons.dashboard_outlined, labelKey: 'nav_dashboard', screen: DashboardScreen()),
+  const _Section(icon: Icons.assignment_ind_outlined, labelKey: 'nav_trainer_applications', screen: TrainerApplicationsScreen()),
+  const _Section(icon: Icons.receipt_long_outlined, labelKey: 'nav_orders', screen: OrdersScreen()),
+  const _Section(icon: Icons.card_giftcard_outlined, labelKey: 'nav_packages', screen: PackagesScreen()),
+  const _Section(icon: Icons.fitness_center_outlined, labelKey: 'nav_programs', screen: ProgramsScreen()),
+  const _Section(icon: Icons.category_outlined, labelKey: 'nav_categories', screen: CategoriesScreen()),
+  const _Section(icon: Icons.local_offer_outlined, labelKey: 'nav_coupons', screen: CouponsScreen()),
+  const _Section(icon: Icons.support_agent_outlined, labelKey: 'nav_complaints', screen: ComplaintsScreen()),
 ];
 
 class ShellScreen extends ConsumerStatefulWidget {
@@ -46,7 +50,8 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
   @override
   Widget build(BuildContext context) {
     final isWide = MediaQuery.of(context).size.width >= _wideBreakpoint;
-    final title = _sections[_index].label;
+    final locale = ref.watch(adminLocaleProvider);
+    final title = t(locale, _sections[_index].labelKey);
 
     if (isWide) {
       return Scaffold(
@@ -65,7 +70,14 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
                     width: double.infinity,
                     padding: const EdgeInsets.all(AppSpacing.md),
                     decoration: const BoxDecoration(color: AppColors.surface, border: Border(bottom: BorderSide(color: AppColors.border))),
-                    child: Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                    child: Row(
+                      children: [
+                        Expanded(child: Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold))),
+                        const LocaleToggle(),
+                        const SizedBox(width: AppSpacing.sm),
+                        NotificationBell(onNavigate: (i) => setState(() => _index = i)),
+                      ],
+                    ),
                   ),
                   Expanded(child: _sections[_index].screen),
                 ],
@@ -77,7 +89,13 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: Text(title)),
+      appBar: AppBar(
+        title: Text(title),
+        actions: [
+          const Padding(padding: EdgeInsets.only(right: AppSpacing.sm), child: LocaleToggle()),
+          NotificationBell(onNavigate: (i) => setState(() => _index = i)),
+        ],
+      ),
       drawer: Drawer(
         child: SafeArea(
           child: _NavContent(
@@ -95,24 +113,25 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
   }
 }
 
-class _NavContent extends StatelessWidget {
+class _NavContent extends ConsumerWidget {
   final int index;
   final ValueChanged<int> onSelect;
   final VoidCallback onLogout;
   const _NavContent({required this.index, required this.onSelect, required this.onLogout});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final locale = ref.watch(adminLocaleProvider);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
-          padding: EdgeInsets.all(AppSpacing.md),
+        Padding(
+          padding: const EdgeInsets.all(AppSpacing.md),
           child: Row(
             children: [
-              Icon(Icons.admin_panel_settings, color: AppColors.primary, size: 28),
-              SizedBox(width: AppSpacing.sm),
-              Text('Yalla Fit Admin', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              const Icon(Icons.admin_panel_settings, color: AppColors.primary, size: 28),
+              const SizedBox(width: AppSpacing.sm),
+              Text(t(locale, 'app_title'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             ],
           ),
         ),
@@ -126,7 +145,7 @@ class _NavContent extends StatelessWidget {
               return ListTile(
                 leading: Icon(_sections[i].icon, color: selected ? AppColors.primary : AppColors.onSurfaceMuted),
                 title: Text(
-                  _sections[i].label,
+                  t(locale, _sections[i].labelKey),
                   style: TextStyle(color: selected ? AppColors.primary : AppColors.onSurface, fontWeight: selected ? FontWeight.w700 : FontWeight.normal),
                 ),
                 selected: selected,
@@ -139,7 +158,7 @@ class _NavContent extends StatelessWidget {
         const Divider(height: 1),
         ListTile(
           leading: const Icon(Icons.logout, color: AppColors.error),
-          title: const Text('Logout', style: TextStyle(color: AppColors.error)),
+          title: Text(t(locale, 'logout'), style: const TextStyle(color: AppColors.error)),
           onTap: onLogout,
         ),
         const SizedBox(height: AppSpacing.sm),

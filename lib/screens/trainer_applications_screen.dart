@@ -153,10 +153,21 @@ class _ApplicationCard extends ConsumerWidget {
         children: [
           Row(
             children: [
-              Expanded(child: Text(application.trainerId, style: const TextStyle(fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis)),
+              Expanded(
+                child: Text(
+                  application.trainerName.isNotEmpty ? application.trainerName : application.trainerId,
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
               _StatusBadge(status: application.verificationStatus),
             ],
           ),
+          if (application.trainerEmail.isNotEmpty) ...[
+            const SizedBox(height: 2),
+            Text(application.trainerEmail, style: const TextStyle(color: AppColors.onSurfaceMuted, fontSize: 12)),
+          ],
           const SizedBox(height: AppSpacing.xs),
           Text(DateFormat.yMMMd().add_jm().format(application.submittedAt), style: const TextStyle(color: AppColors.onSurfaceMuted, fontSize: 12)),
           const SizedBox(height: AppSpacing.sm),

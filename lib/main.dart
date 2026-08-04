@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'config/supabase_config.dart';
 import 'theme/app_theme.dart';
 import 'providers/auth_provider.dart';
+import 'providers/locale_provider.dart';
 import 'screens/login_screen.dart';
 import 'screens/shell_screen.dart';
 
@@ -12,16 +13,20 @@ void main() async {
   runApp(const ProviderScope(child: YallaFitAdminApp()));
 }
 
-class YallaFitAdminApp extends StatelessWidget {
+class YallaFitAdminApp extends ConsumerWidget {
   const YallaFitAdminApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Yalla Fit Admin',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.light,
-      home: const _RootGate(),
+  Widget build(BuildContext context, WidgetRef ref) {
+    final locale = ref.watch(adminLocaleProvider);
+    return Directionality(
+      textDirection: locale == AppLocale.ar ? TextDirection.rtl : TextDirection.ltr,
+      child: MaterialApp(
+        title: 'Yalla Fit Admin',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.light,
+        home: const _RootGate(),
+      ),
     );
   }
 }

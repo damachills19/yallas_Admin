@@ -13,6 +13,8 @@ VerificationStatus verificationStatusFromString(String? s) {
 
 class TrainerApplication {
   final String trainerId;
+  final String trainerName;
+  final String trainerEmail;
   final VerificationStatus verificationStatus;
   final DateTime submittedAt;
   final String qualifications;
@@ -28,6 +30,8 @@ class TrainerApplication {
 
   const TrainerApplication({
     required this.trainerId,
+    this.trainerName = '',
+    this.trainerEmail = '',
     this.verificationStatus = VerificationStatus.pending,
     required this.submittedAt,
     this.qualifications = '',
@@ -43,8 +47,13 @@ class TrainerApplication {
   });
 
   factory TrainerApplication.fromRow(Map<String, dynamic> row) {
+    final profile = row['profiles'] as Map<String, dynamic>?;
+    final firstName = profile?['first_name'] as String? ?? '';
+    final lastName = profile?['last_name'] as String? ?? '';
     return TrainerApplication(
       trainerId: row['trainer_user_id'] as String,
+      trainerName: '$firstName $lastName'.trim(),
+      trainerEmail: profile?['email'] as String? ?? '',
       verificationStatus: verificationStatusFromString(row['verification_status'] as String?),
       submittedAt: DateTime.tryParse(row['submitted_at'] as String? ?? '') ?? DateTime.now(),
       qualifications: row['qualifications'] as String? ?? '',

@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../theme/app_theme.dart';
 import '../providers/auth_provider.dart';
+import '../providers/locale_provider.dart';
+import '../l10n/admin_strings.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_text_field.dart';
+import '../widgets/locale_toggle.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -32,62 +35,66 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(adminAuthProvider);
+    final locale = ref.watch(adminLocaleProvider);
     return Scaffold(
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(AppSpacing.lg),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 420),
-            child: Container(
+      body: Stack(
+        children: [
+          Center(
+            child: SingleChildScrollView(
               padding: const EdgeInsets.all(AppSpacing.lg),
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(AppRadius.lg),
-                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 16, offset: const Offset(0, 6))],
-              ),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const Icon(Icons.admin_panel_settings, size: 48, color: AppColors.primary),
-                    const SizedBox(height: AppSpacing.sm),
-                    const Text('Yalla Fit Admin', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
-                    const SizedBox(height: AppSpacing.xs),
-                    const Text('Sign in with your admin account', style: TextStyle(color: AppColors.onSurfaceMuted), textAlign: TextAlign.center),
-                    const SizedBox(height: AppSpacing.lg),
-                    AppTextField(
-                      label: 'Email',
-                      controller: _email,
-                      keyboardType: TextInputType.emailAddress,
-                      validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 420),
+                child: Container(
+                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
+                    boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 16, offset: const Offset(0, 6))],
+                  ),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const Icon(Icons.admin_panel_settings, size: 48, color: AppColors.primary),
+                        const SizedBox(height: AppSpacing.sm),
+                        Text(t(locale, 'app_title'), style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+                        const SizedBox(height: AppSpacing.xs),
+                        Text(t(locale, 'sign_in_subtitle'), style: const TextStyle(color: AppColors.onSurfaceMuted), textAlign: TextAlign.center),
+                        const SizedBox(height: AppSpacing.lg),
+                        AppTextField(
+                          label: t(locale, 'email'),
+                          controller: _email,
+                          keyboardType: TextInputType.emailAddress,
+                          validator: (v) => (v == null || v.trim().isEmpty) ? t(locale, 'required') : null,
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+                        AppTextField(
+                          label: t(locale, 'password'),
+                          controller: _password,
+                          obscureText: true,
+                          validator: (v) => (v == null || v.isEmpty) ? t(locale, 'required') : null,
+                        ),
+                        if (authState.error != null) ...[
+                          const SizedBox(height: AppSpacing.md),
+                          Text(
+                            authState.error == 'access_denied' ? t(locale, 'access_denied') : authState.error!,
+                            style: const TextStyle(color: AppColors.error),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                        const SizedBox(height: AppSpacing.lg),
+                        AppButton(label: t(locale, 'sign_in'), onPressed: _submit, isLoading: authState.isLoading),
+                      ],
                     ),
-                    const SizedBox(height: AppSpacing.md),
-                    AppTextField(
-                      label: 'Password',
-                      controller: _password,
-                      obscureText: true,
-                      validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
-                    ),
-                    if (authState.error != null) ...[
-                      const SizedBox(height: AppSpacing.md),
-                      Text(
-                        authState.error == 'access_denied'
-                            ? 'This account does not have admin access.'
-                            : authState.error!,
-                        style: const TextStyle(color: AppColors.error),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                    const SizedBox(height: AppSpacing.lg),
-                    AppButton(label: 'Sign In', onPressed: _submit, isLoading: authState.isLoading),
-                  ],
+                  ),
                 ),
               ),
             ),
           ),
-        ),
+          const Positioned(top: AppSpacing.md, right: AppSpacing.md, child: LocaleToggle()),
+        ],
       ),
     );
   }

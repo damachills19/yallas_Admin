@@ -1,3 +1,5 @@
+import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../config/supabase_config.dart';
 import '../models/admin_user.dart';
 import '../models/category.dart';
@@ -243,7 +245,9 @@ class AdminRepository {
   // Trainer applications
   // ---------------------------------------------------------------------
   Future<List<TrainerApplication>> getApplications({VerificationStatus? filterStatus}) async {
-    var builder = SupabaseConfig.client.from('trainer_applications').select();
+    var builder = SupabaseConfig.client
+        .from('trainer_applications')
+        .select('*, profiles!trainer_user_id(first_name, last_name, email)');
     if (filterStatus != null) {
       final s = filterStatus == VerificationStatus.approved
           ? 'approved'
@@ -261,6 +265,85 @@ class AdminRepository {
         .from('trainer_applications')
         .update({'verification_status': approve ? 'approved' : 'rejected'})
         .eq('trainer_user_id', trainerUserId);
+
+    if (approve) {
+      await _createOrUpdateTrainerRow(trainerUserId);
+    }
+
+    await SupabaseConfig.client.from('notifications').insert({
+      'user_id': trainerUserId,
+      'title': approve ? 'Application approved' : 'Application rejected',
+      'body': approve
+          ? 'Congratulations! Your trainer application has been approved. You can now access the trainer portal.'
+          : 'Your trainer application was not approved this time. Please review your submission and try again.',
+    });
+  }
+
+  /// On approval, mirrors the trainer_applications + profiles data into a
+  /// real public.trainers row (creating it if this is the trainer's first
+  /// approval, updating it otherwise) so they actually show up in the
+  /// app/website trainer catalog. Also copies their uploaded profile photo
+  /// out of the private trainer-documents bucket into the public
+  /// trainer-avatars bucket and records the resulting avatar_url.
+  Future<void> _createOrUpdateTrainerRow(String trainerUserId) async {
+    final application = await SupabaseConfig.client
+        .from('trainer_applications')
+        .select('qualifications, experience_years, experience_bio, certifications, profile_photo_path')
+        .eq('trainer_user_id', trainerUserId)
+        .single();
+
+    final profile = await SupabaseConfig.client
+        .from('profiles')
+        .select('first_name, last_name')
+        .eq('id', trainerUserId)
+        .single();
+
+    final name = '${profile['first_name'] ?? ''} ${profile['last_name'] ?? ''}'.trim();
+
+    String? avatarUrl;
+    final photoPath = application['profile_photo_path'] as String?;
+    if (photoPath != null && photoPath.isNotEmpty) {
+      avatarUrl = await _mirrorProfilePhotoToPublicBucket(trainerUserId, photoPath);
+    }
+
+    final row = <String, dynamic>{
+      'user_id': trainerUserId,
+      'name': name.isEmpty ? 'Trainer' : name,
+      'specialization': application['qualifications'] as String? ?? '',
+      'years_of_experience': application['experience_years'] as int? ?? 0,
+      'bio': application['experience_bio'] as String? ?? '',
+      'certifications': application['certifications'] as List? ?? const [],
+      if (avatarUrl != null) 'avatar_url': avatarUrl,
+    };
+
+    final existing =
+        await SupabaseConfig.client.from('trainers').select('id').eq('user_id', trainerUserId).maybeSingle();
+    if (existing != null) {
+      await SupabaseConfig.client.from('trainers').update(row).eq('user_id', trainerUserId);
+    } else {
+      await SupabaseConfig.client.from('trainers').insert(row);
+    }
+  }
+
+  /// Downloads the trainer's private uploaded profile photo (admin has
+  /// read access via the "trainer-documents admin read" storage policy) and
+  /// re-uploads it into the public trainer-avatars bucket, returning its
+  /// public URL. Best-effort: returns null on any failure so approval still
+  /// succeeds even if the photo copy fails.
+  Future<String?> _mirrorProfilePhotoToPublicBucket(String trainerUserId, String photoPath) async {
+    try {
+      final bytes = await SupabaseConfig.client.storage.from('trainer-documents').download(photoPath);
+      final ext = photoPath.contains('.') ? photoPath.split('.').last : 'jpg';
+      final destPath = '$trainerUserId/avatar.$ext';
+      await SupabaseConfig.client.storage.from('trainer-avatars').uploadBinary(
+            destPath,
+            bytes,
+            fileOptions: const FileOptions(upsert: true),
+          );
+      return SupabaseConfig.client.storage.from('trainer-avatars').getPublicUrl(destPath);
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<String> getDocumentUrl(String path) async {
@@ -337,6 +420,24 @@ class AdminRepository {
   Future<void> deleteCoupon(String code) => SupabaseConfig.client.from('coupons').delete().eq('code', code);
 
   // ---------------------------------------------------------------------
+  // Notifications (admin action items)
+  // ---------------------------------------------------------------------
+  /// Combined count of items awaiting admin review, for the nav-bar bell
+  /// badge. Reuses the same queries/patterns as getApplicationStatusCounts
+  /// (trainer_applications.verification_status = 'pending') and
+  /// getPendingBankTransfers (orders.bank_transfer_status = 'pending') —
+  /// no other "pending"/"awaiting review" status columns exist elsewhere
+  /// in this repository.
+  Future<PendingActionCounts> getPendingActionCounts() async {
+    final applicationCounts = await getApplicationStatusCounts();
+    final bankTransfers = await getPendingBankTransfers();
+    return PendingActionCounts(
+      trainerApplications: applicationCounts['pending'] ?? 0,
+      bankTransfers: bankTransfers.length,
+    );
+  }
+
+  // ---------------------------------------------------------------------
   // Complaints
   // ---------------------------------------------------------------------
   Future<List<Complaint>> getComplaints({String? filterStatus}) async {
@@ -352,4 +453,13 @@ class AdminRepository {
     if (adminResponse != null) update['admin_response'] = adminResponse;
     await SupabaseConfig.client.from('complaints').update(update).eq('id', id);
   }
+}
+
+/// Breakdown of items awaiting admin review, for the nav-bar notification
+/// bell badge.
+class PendingActionCounts {
+  final int trainerApplications;
+  final int bankTransfers;
+  const PendingActionCounts({required this.trainerApplications, required this.bankTransfers});
+  int get total => trainerApplications + bankTransfers;
 }
