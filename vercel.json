@@ -4,6 +4,6 @@
   "installCommand": "echo 'skipping npm install — Flutter project'",
   "framework": null,
   "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/((?!favicon\\.ico|favicon\\.png|icons/|manifest\\.json|assets/|canvaskit/|.*\\.js|.*\\.json|.*\\.wasm).*)", "destination": "/index.html" }
   ]
 }
